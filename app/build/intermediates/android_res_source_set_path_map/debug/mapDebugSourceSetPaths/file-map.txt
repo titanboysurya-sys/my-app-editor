@@ -1,0 +1,7 @@
+com.example.cutline.app-pngs-0 C:\Users\Titan Boy Surya\rea-work\app\build\generated\res\pngs\debug
+com.example.cutline.app-updated_navigation_xml-1 C:\Users\Titan Boy Surya\rea-work\app\build\generated\updated_navigation_xml\debug
+com.example.cutline.app-packageDebugResources-2 C:\Users\Titan Boy Surya\rea-work\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.example.cutline.app-packageDebugResources-3 C:\Users\Titan Boy Surya\rea-work\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.example.cutline.app-debug-4 C:\Users\Titan Boy Surya\rea-work\app\build\intermediates\merged_res\debug\mergeDebugResources
+com.example.cutline.app-debug-5 C:\Users\Titan Boy Surya\rea-work\app\src\debug\res
+com.example.cutline.app-main-6 C:\Users\Titan Boy Surya\rea-work\app\src\main\res
