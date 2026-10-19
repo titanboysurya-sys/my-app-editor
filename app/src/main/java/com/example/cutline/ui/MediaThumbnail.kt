@@ -28,14 +28,14 @@ fun MediaThumbnail(
             )
         }.getOrNull()
     }
-    if (bitmap != null) {
+    bitmap?.let { preview ->
         Image(
-            bitmap = bitmap!!.asImageBitmap(),
+            bitmap = preview.asImageBitmap(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = modifier
         )
-    } else {
+    } ?: run {
         androidx.compose.foundation.layout.Box(
             modifier = modifier.background(Color(0xFF27344D))
         )

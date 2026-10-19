@@ -39,8 +39,7 @@ class CutlineCompositorSettings(
     ): OverlaySettings = settings[inputId] ?: StaticOverlaySettings.Builder().build()
 
     /** Media3 exposes alpha and transforms here; blendMode needs a custom GL compositor. */
-    fun blendModeFor(inputId: Int): BlendMode = layers.firstOrNull { it.inputId == inputId }?.blendMode
-        ?: BlendMode.NORMAL
+    fun blendModeFor(inputId: Int): BlendMode = layers[inputId]?.blendMode ?: BlendMode.NORMAL
 
     private val layers = layers.associateBy { it.inputId }
 }

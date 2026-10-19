@@ -15,14 +15,24 @@ import kotlin.math.abs
  * changing the Compose waveform API.
  */
 class AudioWaveformExtractor(private val resolver: ContentResolver) {
+    private fun MediaExtractor.setSource(uri: Uri) {
+        resolver.openFileDescriptor(uri, "r")?.use { descriptor ->
+            setDataSource(descriptor.fileDescriptor, 0L, Long.MAX_VALUE)
+        } ?: error("Unable to open audio: $uri")
+    }
+
     suspend fun extract(uri: Uri, bars: Int = 160): List<Float> = withContext(Dispatchers.IO) {
         val extractor = MediaExtractor()
         try {
-            extractor.setDataSource(resolver, uri, emptyMap())
-            val track = (0 until extractor.trackCount).firstOrNull {
-                extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME).orEmpty()
-                    .startsWith("audio/")
-            } ?: return@withContext List(bars) { 0f }
+            extractor.setSource(uri)
+            var track = -1
+            for (candidate in 0 until extractor.trackCount) {
+                if (extractor.getTrackFormat(candidate).getString(MediaFormat.KEY_MIME).orEmpty().startsWith("audio/")) {
+                    track = candidate
+                    break
+                }
+            }
+            if (track < 0) return@withContext List(bars) { 0f }
             extractor.selectTrack(track)
             val buffer = java.nio.ByteBuffer.allocate(64 * 1024)
             val values = ArrayList<Float>(bars)

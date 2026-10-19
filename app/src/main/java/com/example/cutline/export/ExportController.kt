@@ -101,7 +101,7 @@ class ExportController @Inject constructor(
                 progressJob?.cancel()
                 val verification = verifyOutput(outputFile, options)
                 if (!verification.valid) {
-                    fail(verification.reason)
+                    fail(verification.reason ?: "Export verification failed")
                 } else {
                     _snapshot.value = _snapshot.value.copy(
                         status = ExportStatus.COMPLETE,

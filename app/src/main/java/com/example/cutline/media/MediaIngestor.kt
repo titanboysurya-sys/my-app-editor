@@ -18,10 +18,16 @@ data class MediaAsset(
 )
 
 class MediaIngestor(private val resolver: ContentResolver) {
+    private fun MediaMetadataRetriever.setSource(uri: Uri) {
+        resolver.openFileDescriptor(uri, "r")?.use { descriptor ->
+            setDataSource(descriptor.fileDescriptor)
+        } ?: error("Unable to open media: $uri")
+    }
+
     suspend fun inspect(uri: Uri): MediaAsset = withContext(Dispatchers.IO) {
         val retriever = MediaMetadataRetriever()
         try {
-            retriever.setDataSource(resolver, uri)
+            retriever.setSource(uri)
             val mime = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE).orEmpty()
             MediaAsset(
                 uri = uri,
@@ -48,7 +54,7 @@ class MediaIngestor(private val resolver: ContentResolver) {
     ): Bitmap? = withContext(Dispatchers.IO) {
         val retriever = MediaMetadataRetriever()
         try {
-            retriever.setDataSource(resolver, uri)
+            retriever.setSource(uri)
             val frame = retriever.getFrameAtTime(
                 timeMs.coerceAtLeast(0L) * 1_000L,
                 MediaMetadataRetriever.OPTION_CLOSEST_SYNC

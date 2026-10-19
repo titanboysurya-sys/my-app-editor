@@ -10,7 +10,7 @@ import android.speech.SpeechRecognizer
 class LocalCaptionRecognizer(
     context: Context,
     private val onText: (String) -> Unit,
-    private val onError: (Int) -> Unit = {}
+    private val onRecognitionError: (Int) -> Unit = {}
 ) {
     private val recognizer: SpeechRecognizer? = when {
         !SpeechRecognizer.isRecognitionAvailable(context) -> null
@@ -25,7 +25,7 @@ class LocalCaptionRecognizer(
                 results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     ?.firstOrNull()?.let(onText)
             }
-            override fun onError(error: Int) = onError(error)
+            override fun onError(error: Int) = onRecognitionError(error)
             override fun onReadyForSpeech(params: android.os.Bundle?) = Unit
             override fun onBeginningOfSpeech() = Unit
             override fun onRmsChanged(rmsdB: Float) = Unit

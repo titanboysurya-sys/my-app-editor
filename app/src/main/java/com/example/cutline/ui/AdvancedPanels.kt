@@ -27,6 +27,9 @@ import com.example.cutline.model.AudioMix
 import com.example.cutline.model.TextAnimation
 import com.example.cutline.model.TextStyle
 import com.example.cutline.model.TransitionKind
+import androidx.compose.material3.ExperimentalMaterial3Api
+
+@OptIn(ExperimentalMaterial3Api::class)
 
 @Composable
 fun TextEditorPanel(
@@ -101,6 +104,7 @@ fun AudioMixPanel(initial: AudioMix, onChange: (AudioMix) -> Unit) {
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun ExportSheet(
     snapshot: ExportSnapshot,
     options: ExportOptions,

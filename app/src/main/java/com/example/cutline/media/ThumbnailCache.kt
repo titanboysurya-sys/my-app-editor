@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class ThumbnailCache(context: Context) {
+    private val appContext = context.applicationContext
     private val memory = object : LruCache<String, Bitmap>(
         (Runtime.getRuntime().maxMemory() / 1024 / 8).toInt()
     ) {
@@ -20,7 +21,7 @@ class ThumbnailCache(context: Context) {
         memory.get(key)?.let { return@withContext it }
         val retriever = MediaMetadataRetriever()
         try {
-            retriever.setDataSource(context, uri)
+            retriever.setDataSource(appContext, uri)
             val bitmap = retriever.getFrameAtTime(
                 timeMs * 1000L,
                 MediaMetadataRetriever.OPTION_CLOSEST_SYNC
