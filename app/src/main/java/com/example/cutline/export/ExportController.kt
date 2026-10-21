@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.MediaExtractor
 import android.media.MediaFormat
+import android.net.Uri
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.transformer.DefaultEncoderFactory
@@ -36,8 +37,19 @@ data class ExportOptions(
     val audioBitrate: Int = 192_000,
     val expectedWidth: Int = 1080,
     val expectedHeight: Int = 1920,
-    val expectedFrameRate: Int = 30
+    val expectedFrameRate: Int = 30,
+    val colorMode: ExportColorMode = ExportColorMode.SDR
 )
+
+enum class ExportColorMode { SDR, HDR10, HLG }
+
+enum class ExportPreset(val label: String, val options: ExportOptions) {
+    YOUTUBE_1080("YouTube 1080p", ExportOptions(expectedWidth = 1920, expectedHeight = 1080, videoBitrate = 12_000_000)),
+    YOUTUBE_4K("YouTube 4K", ExportOptions(expectedWidth = 3840, expectedHeight = 2160, videoBitrate = 45_000_000)),
+    TIKTOK("TikTok / Shorts", ExportOptions(expectedWidth = 1080, expectedHeight = 1920, videoBitrate = 12_000_000)),
+    INSTAGRAM("Instagram Reel", ExportOptions(expectedWidth = 1080, expectedHeight = 1920, videoBitrate = 10_000_000)),
+    SQUARE("Square", ExportOptions(expectedWidth = 1080, expectedHeight = 1080, videoBitrate = 10_000_000))
+}
 
 @Singleton
 @OptIn(UnstableApi::class)
@@ -45,11 +57,14 @@ class ExportController @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val historyStore = ExportHistoryStore(context)
     private val _snapshot = MutableStateFlow(ExportSnapshot())
     val snapshot: StateFlow<ExportSnapshot> = _snapshot
+    val history: List<ExportHistoryEntry> get() = historyStore.load()
 
     @Volatile private var activeTransformer: Transformer? = null
     private var progressJob: Job? = null
+    private var activeOptions = ExportOptions()
 
     fun start(
         composition: BuiltComposition,
@@ -67,6 +82,7 @@ class ExportController @Inject constructor(
         )
         require(capability.supported) { capability.reason ?: "Export format is not supported" }
         outputFile.parentFile?.mkdirs()
+        activeOptions = options
         _snapshot.value = ExportSnapshot(
             status = ExportStatus.EXPORTING,
             outputPath = outputFile.absolutePath
@@ -103,6 +119,7 @@ class ExportController @Inject constructor(
                 if (!verification.valid) {
                     fail(verification.reason ?: "Export verification failed")
                 } else {
+                    historyStore.append(ExportHistoryEntry(outputFile.absolutePath, System.currentTimeMillis(), options.expectedWidth, options.expectedHeight, ExportStatus.COMPLETE))
                     _snapshot.value = _snapshot.value.copy(
                         status = ExportStatus.COMPLETE,
                         progress = 100
@@ -148,6 +165,20 @@ class ExportController @Inject constructor(
         )
     }
 
+    fun fastTrimSingleClip(source: Uri, startMs: Long, endMs: Long, outputFile: File) {
+        check(_snapshot.value.status != ExportStatus.EXPORTING) { "An export is already running" }
+        _snapshot.value = ExportSnapshot(ExportStatus.EXPORTING, 0, outputFile.absolutePath)
+        scope.launch(Dispatchers.IO) {
+            val result = FastTrimExporter.export(context, source, startMs, endMs, outputFile)
+            scope.launch {
+                result.onSuccess {
+                    _snapshot.value = ExportSnapshot(ExportStatus.COMPLETE, 100, outputFile.absolutePath)
+                    historyStore.append(ExportHistoryEntry(outputFile.absolutePath, System.currentTimeMillis(), 0, 0, ExportStatus.COMPLETE, "Fast single-clip trim"))
+                }.onFailure { fail("Fast trim failed: ${it.message ?: "unknown error"}") }
+            }
+        }
+    }
+
     fun reset() {
         if (_snapshot.value.status != ExportStatus.EXPORTING) {
             _snapshot.value = ExportSnapshot()
@@ -161,6 +192,9 @@ class ExportController @Inject constructor(
             progress = 0,
             error = message
         )
+        _snapshot.value.outputPath?.let { path ->
+            historyStore.append(ExportHistoryEntry(path, System.currentTimeMillis(), activeOptions.expectedWidth, activeOptions.expectedHeight, ExportStatus.FAILED, message))
+        }
     }
 
     private fun verifyOutput(file: File, options: ExportOptions): Verification {

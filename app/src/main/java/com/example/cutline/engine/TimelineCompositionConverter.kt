@@ -1,6 +1,7 @@
 package com.example.cutline.engine
 
 import android.text.SpannableString
+import android.content.Context
 import android.text.style.ForegroundColorSpan
 import androidx.media3.common.C
 import androidx.media3.common.Effect
@@ -18,13 +19,15 @@ import androidx.media3.transformer.Effects
 import com.example.cutline.model.TimelineClip
 import com.example.cutline.model.TimelineTrack
 import com.example.cutline.model.TrackKind
+import com.example.cutline.model.SpeedCurveMath
 
 @OptIn(UnstableApi::class)
 data class CompositionOptions(
     val outputWidth: Int = 1080,
     val outputHeight: Int = 1920,
     val preserveHdr: Boolean = false,
-    val allowAudioTransmux: Boolean = true
+    val allowAudioTransmux: Boolean = true,
+    val effectContext: Context? = null
 )
 
 @OptIn(UnstableApi::class)
@@ -144,6 +147,10 @@ object TimelineCompositionConverter {
                 clip.filter,
                 clip.transform,
                 clip.colorAdjustments
+                , clip.transformKeyframes,
+                if (clip.stabilization.enabled && clip.stabilization.analysisReady) clip.stabilizationKeyframes else emptyList(),
+                options.effectContext,
+                clip.chromaKey
             ) +
                 textEffect(clip) +
                 Presentation.createForWidthAndHeight(
@@ -157,7 +164,17 @@ object TimelineCompositionConverter {
             .setEffects(Effects(audio, video))
 
         if (removeVideo) item.setRemoveVideo(true)
-        if (clip.speed != 1f) {
+        if (clip.speedCurve.isNotEmpty()) {
+            val points = clip.speedCurve.sortedBy { it.timeMs }
+            val stepMs = 20L
+            item.setSpeed(object : SpeedProvider {
+                override fun getSpeed(timeUs: Long): Float = SpeedCurveMath.speedAt(points, timeUs / 1_000L, clip.speed)
+                override fun getNextSpeedChangeTimeUs(timeUs: Long): Long {
+                    val nextMs = ((timeUs / 1_000L) / stepMs + 1L) * stepMs
+                    return if (nextMs >= clip.sourceTrimDurationMs) C.TIME_UNSET else nextMs * 1_000L
+                }
+            })
+        } else if (clip.speed != 1f) {
             val speed = clip.speed.coerceIn(.1f, 100f)
             item.setSpeed(object : SpeedProvider {
                 override fun getSpeed(presentationTimeUs: Long) = speed

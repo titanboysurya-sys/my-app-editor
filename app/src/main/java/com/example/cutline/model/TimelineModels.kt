@@ -8,11 +8,13 @@ enum class TrackKind { VIDEO, OVERLAY, AUDIO }
 
 enum class BlendMode { NORMAL, ADD, MULTIPLY, SCREEN }
 
-enum class FilterPreset { NONE, WARM, COOL, MONO, VIVID }
+enum class FilterPreset { NONE, WARM, COOL, MONO, VIVID, CINEMATIC, SEPIA, NOIR, TEAL_ORANGE, FADE }
 
 enum class TextAnimation { NONE, FADE_IN, TYPEWRITER, SLIDE, POP }
 
 enum class TransitionKind { NONE, CROSSFADE, SLIDE, WIPE, ZOOM }
+
+enum class KeyframeEasing { LINEAR, EASE_IN, EASE_OUT, EASE_IN_OUT }
 
 data class ColorAdjustments(
     val brightness: Float = 0f,
@@ -63,7 +65,8 @@ data class AudioMix(
 
 data class TransformKeyframe(
     val timeMs: Long,
-    val transform: LayerTransform
+    val transform: LayerTransform,
+    val easing: KeyframeEasing = KeyframeEasing.LINEAR
 )
 
 data class AudioKeyframe(
@@ -102,9 +105,18 @@ data class TimelineClip(
     val transitionDurationMs: Long = 0L,
     val transformKeyframes: List<TransformKeyframe> = emptyList(),
     val audioKeyframes: List<AudioKeyframe> = emptyList()
+    , val mask: MaskSettings = MaskSettings()
+    , val blur: BlurSettings = BlurSettings()
+    , val motionTracking: MotionTrackingSettings = MotionTrackingSettings()
+    , val audioEnhancement: AudioEnhancementSettings = AudioEnhancementSettings()
+    , val speedCurve: List<SpeedPoint> = emptyList()
+    , val captions: List<CaptionCue> = emptyList()
+    , val stabilization: StabilizationSettings = StabilizationSettings()
+    , val freezeFrame: FreezeFrameSettings = FreezeFrameSettings()
+    , val stabilizationKeyframes: List<TransformKeyframe> = emptyList()
 ) {
     val sourceTrimDurationMs get() = (sourceEndMs - sourceStartMs).coerceAtLeast(1L)
-    val durationMs get() = (sourceTrimDurationMs / speed.coerceIn(.1f, 100f)).toLong().coerceAtLeast(1L)
+    val durationMs get() = SpeedCurveMath.outputDurationMs(sourceTrimDurationMs, speedCurve, speed)
     val timelineEndMs get() = timelineStartMs + durationMs
 }
 
